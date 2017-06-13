@@ -1,0 +1,29 @@
+{
+  "name": "lazy-initializer",
+  "version": "0.1.0",
+  "description": "Transparent generic deferred initializer which waits until your first-time use.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JLChnToZ/lazy-loader.git"
+  },
+  "engines": {
+    "node": ">=6.0.0"
+  },
+  "keywords": [
+    "deferred",
+    "require",
+    "lazy",
+    "loader",
+    "init"
+  ],
+  "author": "Jeremy Lam \"JLChnToZ\"",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/JLChnToZ/lazy-loader/issues"
+  },
+  "homepage": "https://github.com/JLChnToZ/lazy-loader#readme"
+}
