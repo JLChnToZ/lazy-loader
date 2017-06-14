@@ -1,5 +1,11 @@
 Lazy Initializer
 ===========
+[![GitHub issues](https://img.shields.io/github/issues/JLChnToZ/lazy-loader.svg)](https://github.com/JLChnToZ/lazy-loader/issues)
+[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/JLChnToZ/lazy-loader/blob/master/LICENSE)
+[![Node version](https://img.shields.io/node/v/lazy-initializer.svg)](https://github.com/JLChnToZ/lazy-loader/blob/master/package.json)
+[![NPM version](https://img.shields.io/npm/v/lazy-initializer.svg)](https://www.npmjs.com/package/lazy-initializer)
+[![NPM downloads](https://img.shields.io/npm/dt/lazy-initializer.svg)](https://www.npmjs.com/package/lazy-initializer)
+
 Lazy Initializer is a generic deferred object initializer, which will creates a wrapper which waits for your first time use, then it will triggers the initialize function you defined. The concept is similar to [C#'s Lazy<T> class](https://msdn.microsoft.com/en-us/library/dd642331%28v%3Dvs.110%29.aspx) , but more transparent implementation in ES6.
 
 Usage
