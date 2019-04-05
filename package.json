@@ -1,10 +1,11 @@
 {
   "name": "lazy-initializer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Transparent generic deferred initializer which waits until your first-time use.",
-  "main": "index.js",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc"
   },
   "repository": {
     "type": "git",
@@ -25,5 +26,8 @@
   "bugs": {
     "url": "https://github.com/JLChnToZ/lazy-loader/issues"
   },
-  "homepage": "https://github.com/JLChnToZ/lazy-loader#readme"
+  "homepage": "https://github.com/JLChnToZ/lazy-loader#readme",
+  "devDependencies": {
+    "typescript": "^3.4.1"
+  }
 }

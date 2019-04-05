@@ -6,35 +6,86 @@ Lazy Initializer
 [![NPM version](https://img.shields.io/npm/v/lazy-initializer.svg)](https://www.npmjs.com/package/lazy-initializer)
 [![NPM downloads](https://img.shields.io/npm/dt/lazy-initializer.svg)](https://www.npmjs.com/package/lazy-initializer)
 
-Lazy Initializer is a generic deferred object initializer, which will creates a wrapper which waits for your first time use, then it will triggers the initialize function you defined. The concept is similar to [C#'s Lazy<T> class](https://msdn.microsoft.com/en-us/library/dd642331%28v%3Dvs.110%29.aspx) , but more transparent implementation in ES6.
+Lazy Initializer is a generic deferred object initializer, which will creates a wrapper which waits for your first time use,
+then it will triggers the initialize function you defined.
+The concept is similar to [C#'s Lazy<T> class](https://msdn.microsoft.com/en-us/library/dd642331%28v%3Dvs.110%29.aspx),
+but more transparent implementation in ES6.
 
 Usage
 -----
-Just use the `lazyLoader` function provided similar to `function.prototype.call`:
+Simple usage for wrapping a property in a class:
 ```javascript
-const { lazyLoader } = require('lazy-initializer');
+import { LazyProperty } from 'lazy-initializer'; // or require(...) if your environment does not support import.
 
-function someHeavyInitializer(foo, bar) {
-  // Some heavy-loading stuffs here...
-  return { foo, bar, baz: this };
+class Schrodinger {
+  @LazyProperty
+  get cat() { return Math.random() > 0.5; }
+  // Setter will be called when the value has been assigned first time.
+  // Setters can be not defined, but then the property will be read-only.
+  set cat(value) {
+    console.log(`It is ${value ? 'alive' : 'dead'} now!`);
+    assert.strictEqual(value, this.cat);
+  }
 }
-const obj = lazyLoader(someHeavyInitializer, 'foo', 123, null); // The function is defined to be called, but it is not yet called here.
 
-// Some other stuff unrelated here...
-
-obj.something = 'cool'; // Now it is called here
-console.log(obj);
-// { foo: 123, bar: null, baz: 'foo', something: 'cool' }
+const isAlive = new Schrodinger().cat;
 ```
 
-Or even simpler if you want to load some node modules since you just need it somewhere...
+Alternatively, if your transpiler or environment does not support ES6 decorators:
 ```javascript
-const requireLater = require('lazy-initializer').requireLater(require); // Our loader needs the reference to the require function in current context.
+import { LazyProperty } from 'lazy-initializer';
 
-const someModule = requireLater('./path/to/module/you/dont/want/to/load/immediately');
+class Schrodinger {
+  get cat() { return Math.random() > 0.5; }
+}
+LazyProperty.transform(Schrodinger, 'cat');
+```
 
-// ...
-someModule.someFunction(); // The module is not loaded until you start to use it.
+Also, you may manually craete a new lazy property without defining the getter/setter before:
+```javascript
+import { LazyProperty } from 'lazy-initializer';
+
+const someObject = {};
+LazyProperty.define(someObject, 'somelazyField', () => 'boo!');
+// Then, `someObject` has a `somelazyField` now!
+
+// You may batch define more properties like this:
+LazyProperty.define(someObject, {
+  someOtherLazyField: () => 'another one!',
+  someMoreComplicatedLazyField: {
+    init: () => 'More controllable behaviour!',
+    enumerable: false,
+    configurable: false,
+    writable: true,
+  },
+});
+```
+
+Another advanced usage is wrapping a whole object (which uses proxy):
+```javascript
+import { LazyProxy } from 'lazy-initializer';
+
+const somethingExpensive = LazyProxy.create(() => {
+  // Some heavy stuffs...
+  return someHeavyObject;
+});
+
+// You may treat the object is loosely equals to the initialized object itself.
+const someValue = somethingExpensive.someValue();
+```
+
+If the lazy initialized object will be used as constructors:
+```javascript
+import { LazyProxy } from 'lazy-initializer';
+
+const SomeHeavyConstructor = LazyProxy.create(() => {
+  // Some heavy stuffs...
+  return Foo;
+}, true);
+// The true means this will use as constructor,
+// the proxy internals will do some tweaks to make this to be supported.
+
+const someValue = new SomeHeavyConstructor();
 ```
 
 Installation
@@ -43,10 +94,15 @@ In your Node.js project path, run:
 ```sh
 $ npm install --save lazy-initializer
 ```
+or yarn
+```sh
+$ yarn add lazy-initializer
+```
 
 Requirements
 ------------
-This module make uses the new ES6 features, especially [proxy](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy), therefore it requires at least Node.js 6+ to works.
+This module make uses the new ES6 features, especially [proxy](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy),
+therefore it requires at least Node.js 6+ to works.
 
 [ECMAScript 6 compatibility table](https://kangax.github.io/compat-table/es6/)
 
