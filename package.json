@@ -5,7 +5,8 @@
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "build-doc": "typedoc"
   },
   "repository": {
     "type": "git",
@@ -28,6 +29,7 @@
   },
   "homepage": "https://github.com/JLChnToZ/lazy-loader#readme",
   "devDependencies": {
+    "typedoc": "^0.14.2",
     "typescript": "^3.4.1"
   }
 }

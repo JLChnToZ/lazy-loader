@@ -53,7 +53,7 @@ export namespace FunctionProxyResolver {
   /**
    * Wrap a raw function to give ability to resolve proxified `this` problem.
    * This will do nothing if the value provided is not a function.
-   * @param value The original function
+   * @param value The value maybe original function.
    */
   export function wrap(value: unknown) {
     if(typeof value === 'function' && !proxifiedSources.has(value)) {
@@ -71,7 +71,7 @@ export namespace FunctionProxyResolver {
   /**
    * Unwrap a wrapped function to the original one.
    * This will do nothing if the value provided is not a wrapped function.
-   * @param value 
+   * @param value The value maybe a warpped function.
    */
   export function unwrap(value: unknown) {
     return isObject(value) && proxifiedSources.get(value) || value;

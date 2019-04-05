@@ -87,6 +87,7 @@ const SomeHeavyConstructor = LazyProxy.create(() => {
 
 const someValue = new SomeHeavyConstructor();
 ```
+For more information, please see [docs](https://code.moka-rin.moe/lazy-loader/).
 
 Installation
 ------------

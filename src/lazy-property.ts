@@ -183,7 +183,7 @@ function isPropertyKey(target: unknown): target is PropertyKey {
  * Lazy properties are undefined until the first interaction,
  * then it will become static.
  *
- * ### Example
+ * @example
  * ```javascript
  * class Schrodinger {
  *   @LazyProperty
@@ -220,6 +220,7 @@ export namespace LazyProperty {
    * @param keys The key of the properties would like to transform.
    *
    * @example
+   * ```javascript
    * class Schrodinger {
    *   get cat() { return Math.random() > 0.5; }
    *   // Setter will be called when the value has been assigned first time.
@@ -230,6 +231,7 @@ export namespace LazyProperty {
    *   }
    * }
    * LazyProperty.transform(Schrodinger, 'cat');
+   * ```
    */
   export function transform<T extends object, C extends Class<T>>(
     target: C, ...keys: Array<keyof T>
@@ -255,6 +257,11 @@ export namespace LazyProperty {
    * @param writable Writable flag for the property.
    * @param configurable Configurable flag for the property after initialized.
    * @param enumerable Enumerable flag for the property.
+   * @example
+   * ```javascript
+   * const someObject = {};
+   * LazyProperty.define(someObject, 'somelazyField', () => 'boo!');
+   * ```
    */
   export function define<T extends object, K extends keyof T>(
     target: T, key: K, init: LazyInit<T, K>,
@@ -264,6 +271,19 @@ export namespace LazyProperty {
    * Explicit define lazy initializer properties for an object or class prototype.
    * @param target The prototype or object contains the property.
    * @param defines Key hash for all descriptors would like to define.
+   * @example
+   * ```javascript
+   * const someObject = {};
+   * LazyProperty.define(someObject, {
+   *   someOtherLazyField: () => 'another one!',
+   *   someMoreComplicatedLazyField: {
+   *     init: () => 'More controllable behaviour!',
+   *     enumerable: false,
+   *     configurable: false,
+   *     writable: true,
+   *   },
+   * });
+   * ```
    */
   export function define<T extends object, K extends keyof T>(
     target: T, defines: DefineDescriptors<T, K>,
