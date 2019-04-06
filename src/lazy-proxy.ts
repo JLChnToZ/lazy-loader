@@ -1,6 +1,6 @@
 import { LazyProperty } from './lazy-property';
 import { FunctionProxyResolver as FPResolver } from './function-proxy-resolver';
-import { isObject } from './utils';
+import { isObject, DefaultPropertyDescriptors } from './utils';
 
 /** Lazy initializer proxy factory */
 export namespace LazyProxy {
@@ -61,11 +61,9 @@ export namespace LazyProxy {
       return attributes ||
         // Tell some lie: If not exists and proxified object is non extensible,
         // treat this property as exists, undefined, configurable but read only.
-        (!Reflect.isExtensible(this.source) ? {
-          value: undefined,
-          writable: false,
-          configurable: true,
-        } : undefined);
+        (!Reflect.isExtensible(this.source) ?
+          DefaultPropertyDescriptors.empty :
+          undefined);
     }
 
     public defineProperty(_: T, key: PropertyKey, attributes: PropertyDescriptor) {
@@ -113,11 +111,9 @@ export namespace LazyProxy {
       return super.getOwnPropertyDescriptor(target, key) ||
         // Rule breaking resolver: If dummy property is exists but non-configurable,
         // treat this property exists, undefined, configurable and writable.
-        (isNonConfigurable(target, key) ? {
-          value: undefined,
-          writable: true,
-          configurable: true,
-        } : undefined);
+        (isNonConfigurable(target, key) ?
+          DefaultPropertyDescriptors.emptyReadOnly :
+          undefined);
     }
 
     public ownKeys(target: T) {

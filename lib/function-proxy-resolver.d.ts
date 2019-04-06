@@ -24,13 +24,13 @@ export declare namespace FunctionProxyResolver {
     /**
      * Wrap a raw function to give ability to resolve proxified `this` problem.
      * This will do nothing if the value provided is not a function.
-     * @param value The original function
+     * @param value The value maybe original function.
      */
     function wrap(value: unknown): unknown;
     /**
      * Unwrap a wrapped function to the original one.
      * This will do nothing if the value provided is not a wrapped function.
-     * @param value
+     * @param value The value maybe a warpped function.
      */
     function unwrap(value: unknown): unknown;
 }

@@ -7,6 +7,16 @@ export declare namespace LazyProxy {
      * @param isConstructor Whether the target object will be a constructor and
      * the proxy will use as constructor directly or not. This will use a alternative flow
      * with some minor drawbacks to provide constructor support.
+     * @example
+     * ```javascript
+     * const somethingExpensive = LazyProxy.create(() => {
+     *   // Some heavy stuffs...
+     *   return someHeavyObject;
+     * });
+     *
+     * // You may treat the object is loosely equals to the initialized object itself.
+     * const someValue = somethingExpensive.someValue();
+     * ```
      */
     function create<T extends object>(init: () => T, isConstructor?: boolean): T;
     function create<T>(init: () => T, isConstructor?: boolean): T & object;

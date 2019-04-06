@@ -1,3 +1,5 @@
+import { findPropertyDescriptor, isPropertyKey } from './utils';
+
 // Type Definitions
 /** Generic class constructor interface. */
 export interface Class<T extends object> extends Function {
@@ -147,34 +149,6 @@ class LazyHandler<T extends object, K extends keyof T> {
       this.write.call(instance, value);
     return value;
   }
-}
-
-// Helpers
-const emptyProperty = Object.freeze<PropertyDescriptor>({
-  configurable: true,
-  writable: true,
-  value: undefined,
-});
-
-const emptySealedProperty = Object.freeze<PropertyDescriptor>({
-  configurable: false,
-  writable: false,
-  value: undefined,
-});
-
-function findPropertyDescriptor<T extends object, K extends keyof T>(
-  o: T, key: K,
-): TypedPropertyDescriptor<T[K]> {
-  for(let p = o; p; p = Object.getPrototypeOf(p)) {
-    const descriptor = Object.getOwnPropertyDescriptor(p, key);
-    if(descriptor) return descriptor;
-  }
-  return Object.isExtensible(o) ? emptyProperty : emptySealedProperty;
-}
-
-function isPropertyKey(target: unknown): target is PropertyKey {
-  const type = typeof target;
-  return type === 'string' || type === 'number' || type === 'symbol';
 }
 
 // Exports
