@@ -14,10 +14,12 @@ export declare type DefineDescriptor<T extends object, K extends keyof T> = {
     init: LazyInit<T, K>;
     /** Writable flag for the property. */
     writable?: boolean;
-    /** Configurable flag for the property after initialized. */
+    /** Configurable flag for the property *after* initialized. */
     configurable?: boolean;
     /** Enumerable flag for the property. */
     enumerable?: boolean;
+    /** Enforce to seal (set non-configurable) the lazy initializer. */
+    sealed?: boolean;
 } | LazyInit<T, K>;
 export declare type LazyInit<T extends object, K extends keyof T> = (this: T, key: K) => T[K];
 /**
@@ -70,15 +72,21 @@ export declare namespace LazyProperty {
      * @param key The key of the property.
      * @param init The init function, which will returns the value once initialized.
      * @param writable Writable flag for the property.
-     * @param configurable Configurable flag for the property after initialized.
+     * @param configurable Configurable flag for the property *after* initialized.
      * @param enumerable Enumerable flag for the property.
+     * @param sealed Enforce to seal (set non-configurable) the lazy initializer.
+     * If this is set to `true`, the initializer will not reconfigure itself
+     * and the initialized value will be store to a hidden heap when you get/set it directly
+     * (not via an inherited instance with the `target` as prototype).
+     * This is safer but slower therefore it is not recommend to set `true` if you want to define
+     * lazy property on an object but not as an prototype for inheritance.
      * @example
      * ```javascript
      * const someObject = {};
      * LazyProperty.define(someObject, 'somelazyField', () => 'boo!');
      * ```
      */
-    function define<T extends object, K extends keyof T>(target: T, key: K, init: LazyInit<T, K>, writable?: boolean, configurable?: boolean, enumerable?: boolean): Defined<T, K>;
+    function define<T extends object, K extends keyof T>(target: T, key: K, init: LazyInit<T, K>, writable?: boolean, configurable?: boolean, enumerable?: boolean, sealed?: boolean): Defined<T, K>;
     /**
      * Explicit define lazy initializer properties for an object or class prototype.
      * @param target The prototype or object contains the property.

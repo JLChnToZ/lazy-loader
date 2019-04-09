@@ -29,13 +29,22 @@ export namespace DefaultPropertyDescriptors {
   });
 }
 
+/**@ignore */
+export interface InheritedPropertyDescriptor<T> extends TypedPropertyDescriptor<T> {
+  inherited?: boolean;
+}
+
 /** @ignore */
 export function findPropertyDescriptor<T extends object, K extends keyof T>(
-  o: T, key: K,
-): TypedPropertyDescriptor<T[K]> {
+  o: T, key: K, ignoreInherited?: boolean,
+): InheritedPropertyDescriptor<T[K]> {
   for(let p = o; p; p = Object.getPrototypeOf(p)) {
     const descriptor = Object.getOwnPropertyDescriptor(p, key);
-    if(descriptor) return descriptor;
+    if(descriptor) {
+      (descriptor as InheritedPropertyDescriptor<T[K]>).inherited = p !== o;
+      return descriptor;
+    }
+    if(ignoreInherited) break;
   }
   return DefaultPropertyDescriptors[Object.isExtensible(o) ? 'empty' : 'emptySealed'];
 }

@@ -1,4 +1,4 @@
-import { findPropertyDescriptor, isPropertyKey } from './utils';
+import { findPropertyDescriptor, isPropertyKey, InheritedPropertyDescriptor } from './utils';
 
 // Type Definitions
 /** Generic class constructor interface. */
@@ -20,10 +20,12 @@ export type DefineDescriptor<T extends object, K extends keyof T> = {
   init: LazyInit<T, K>;
   /** Writable flag for the property. */
   writable?: boolean;
-  /** Configurable flag for the property after initialized. */
+  /** Configurable flag for the property *after* initialized. */
   configurable?: boolean;
   /** Enumerable flag for the property. */
   enumerable?: boolean;
+  /** Enforce to seal (set non-configurable) the lazy initializer. */
+  sealed?: boolean;
 } | LazyInit<T, K>;
 
 export type LazyInit<T extends object, K extends keyof T> = (this: T, key: K) => T[K];
@@ -36,10 +38,10 @@ type TypeSetter<T extends object, K extends keyof T> = (this: T, value: T[K]) =>
 class LazyHandler<T extends object, K extends keyof T> {
   public static define<T extends object, K extends keyof T>(
     target: T, key: K, init: LazyInit<T, K>,
-    writable = true, configurable = true, enumerable?: boolean,
+    writable = true, configurable = true, enumerable?: boolean, sealed?: boolean,
   ) {
     const descriptor = findPropertyDescriptor(target, key);
-    if(!descriptor.configurable)
+    if(!descriptor.configurable && !descriptor.inherited)
       throw new TypeError('This property is sealed.');
     if(descriptor.get)
       throw new TypeError('This property already has a getter.');
@@ -49,22 +51,22 @@ class LazyHandler<T extends object, K extends keyof T> {
       enumerable = descriptor.enumerable;
     return Object.defineProperty(
       target, key,
-      new this(key, init, writable, configurable).getAttr(enumerable),
+      new this(key, init, writable, configurable).getAttr(enumerable, sealed),
     );
   }
 
   public static getTransform<T extends object, K extends keyof T>(
     key: K,
-    { configurable, enumerable, get, set }: TypedPropertyDescriptor<T[K]>,
+    { configurable, enumerable, inherited, get, set }: InheritedPropertyDescriptor<T[K]>,
     isReconfigure?: boolean,
   ) {
-    if(isReconfigure && !configurable)
+    if(isReconfigure && !configurable && !inherited)
       throw new TypeError('This property is sealed.');
     if(!get)
       throw new TypeError('This property does not have a getter.');
     if(this.allHandlers.has(get))
       throw new TypeError('This property has already been transformed.');
-    return new this(key, get, set, configurable).getAttr(enumerable);
+    return new this(key, get, set, configurable).getAttr(enumerable, !configurable);
   }
 
   private static readonly allCache = new WeakMap();
@@ -88,7 +90,7 @@ class LazyHandler<T extends object, K extends keyof T> {
     this.configurable = configurable;
   }
 
-  public getAttr(enumerable?: boolean): TypedPropertyDescriptor<T[K]> {
+  public getAttr(enumerable?: boolean, sealed?: boolean): TypedPropertyDescriptor<T[K]> {
     const handler = this;
     if(!this.getter)
       LazyHandler.allHandlers.add(this.getter = function() {
@@ -99,7 +101,7 @@ class LazyHandler<T extends object, K extends keyof T> {
         return handler.processValue(this, value);
       });
     return {
-      configurable: true,
+      configurable: !sealed,
       enumerable,
       get: this.getter,
       set: this.setter,
@@ -109,7 +111,7 @@ class LazyHandler<T extends object, K extends keyof T> {
   private processValue(
     instance: T, newValue: T[K] | typeof LazyHandler.$getter,
   ) {
-    const attr = findPropertyDescriptor(instance, this.key);
+    const attr = findPropertyDescriptor(instance, this.key, true);
     let hasValue: boolean | undefined;
     let value: T[K];
     if(attr.configurable) { // Normal flow
@@ -123,7 +125,7 @@ class LazyHandler<T extends object, K extends keyof T> {
         writable: !!this.write,
         enumerable: attr.enumerable,
       });
-    } else { // Edge flow
+    } else { // Sealed flow
       let cache = LazyHandler.allCache.get(instance);
       if(cache)
         hasValue = this.key in cache;
@@ -229,8 +231,14 @@ export namespace LazyProperty {
    * @param key The key of the property.
    * @param init The init function, which will returns the value once initialized.
    * @param writable Writable flag for the property.
-   * @param configurable Configurable flag for the property after initialized.
+   * @param configurable Configurable flag for the property *after* initialized.
    * @param enumerable Enumerable flag for the property.
+   * @param sealed Enforce to seal (set non-configurable) the lazy initializer.
+   * If this is set to `true`, the initializer will not reconfigure itself
+   * and the initialized value will be store to a hidden heap when you get/set it directly
+   * (not via an inherited instance with the `target` as prototype).
+   * This is safer but slower therefore it is not recommend to set `true` if you want to define
+   * lazy property on an object but not as an prototype for inheritance.
    * @example
    * ```javascript
    * const someObject = {};
@@ -239,7 +247,7 @@ export namespace LazyProperty {
    */
   export function define<T extends object, K extends keyof T>(
     target: T, key: K, init: LazyInit<T, K>,
-    writable?: boolean, configurable?: boolean, enumerable?: boolean,
+    writable?: boolean, configurable?: boolean, enumerable?: boolean, sealed?: boolean,
   ): Defined<T, K>;
   /**
    * Explicit define lazy initializer properties for an object or class prototype.
@@ -265,12 +273,12 @@ export namespace LazyProperty {
   export function define<T extends object, K extends keyof T>(
     target: T, keyOrDefs: K | DefineDescriptors<T, K>,
     sInit?: LazyInit<T, K>,
-    sWri?: boolean, sCfg?: boolean, sEnum?: boolean,
+    sWri?: boolean, sCfg?: boolean, sEnum?: boolean, sSeal?: boolean,
   ) {
     if(Object.isSealed(target))
       throw new TypeError('The object is sealed.');
     if(isPropertyKey(keyOrDefs))
-      return LazyHandler.define(target, keyOrDefs, sInit!, sWri, sCfg, sEnum);
+      return LazyHandler.define(target, keyOrDefs, sInit!, sWri, sCfg, sEnum, sSeal);
     for(const [key, defOrInit] of
       Object.entries(keyOrDefs) as Array<[K, DefineDescriptor<T, K>]>
     ) {
@@ -278,9 +286,9 @@ export namespace LazyProperty {
         LazyHandler.define(target, key, defOrInit);
         continue;
       }
-      const { init, writable, configurable, enumerable } = defOrInit;
+      const { init, writable, configurable, enumerable, sealed } = defOrInit;
       LazyHandler.define(
-        target, key, init, writable, configurable, enumerable,
+        target, key, init, writable, configurable, enumerable, sealed,
       );
     }
     return target;

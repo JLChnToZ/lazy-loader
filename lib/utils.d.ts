@@ -9,5 +9,9 @@ export declare namespace DefaultPropertyDescriptors {
     /** @ignore */
     const emptySealed: Readonly<PropertyDescriptor>;
 }
+/**@ignore */
+export interface InheritedPropertyDescriptor<T> extends TypedPropertyDescriptor<T> {
+    inherited?: boolean;
+}
 /** @ignore */
-export declare function findPropertyDescriptor<T extends object, K extends keyof T>(o: T, key: K): TypedPropertyDescriptor<T[K]>;
+export declare function findPropertyDescriptor<T extends object, K extends keyof T>(o: T, key: K, ignoreInherited?: boolean): InheritedPropertyDescriptor<T[K]>;
