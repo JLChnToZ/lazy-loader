@@ -27,14 +27,6 @@ export namespace DefaultPropertyDescriptors {
     enumerable: false,
     value: undefined,
   });
-  
-  /** @ignore */
-  export const emptyReadOnly = Object.freeze<PropertyDescriptor>({
-    configurable: true,
-    writable: true,
-    enumerable: false,
-    value: undefined,
-  });
 }
 
 /** @ignore */

@@ -108,21 +108,27 @@ export namespace LazyProxy {
     }
 
     public getOwnPropertyDescriptor(target: T, key: PropertyKey) {
-      return super.getOwnPropertyDescriptor(target, key) ||
-        // Rule breaking resolver: If dummy property is exists but non-configurable,
-        // treat this property exists, undefined, configurable and writable.
-        (isNonConfigurable(target, key) ?
-          DefaultPropertyDescriptors.emptyReadOnly :
-          undefined);
+      const result = super.getOwnPropertyDescriptor(target, key);
+      if(result) return result;
+      // Rule breaking resolver: If dummy property is exists but non-configurable,
+      // remove original property's value, getter and setter then return.
+      const sealed = getDescriptorIfSealed(target, key);
+      if(sealed) {
+        delete sealed.value;
+        delete sealed.get;
+        delete sealed.set;
+      }
+      return sealed;
     }
 
     public ownKeys(target: T) {
-      const keys = new Set(super.ownKeys(target));
+      const keys = super.ownKeys(target);
+      const keySet = new Set(keys);
       // Rule breaking resolver: Union all dummy properties which non-configurable
       for(const key of Reflect.ownKeys(target))
-        if(isNonConfigurable(target, key))
-          keys.add(key);
-      return [...keys];
+        if(getDescriptorIfSealed(target, key) && !keySet.has(key))
+          keys.push(key);
+      return keys;
     }
 
     public construct(_: T, args: ArrayLike<any>, newTarget: any) {
@@ -132,9 +138,9 @@ export namespace LazyProxy {
     }
   }
 
-  function isNonConfigurable(target: object, key: PropertyKey) {
+  function getDescriptorIfSealed(target: object, key: PropertyKey) {
     const descriptor = Reflect.getOwnPropertyDescriptor(target, key);
-    return descriptor && !descriptor.configurable;
+    return descriptor && !descriptor.configurable ? descriptor : undefined;
   }
 
   /**
