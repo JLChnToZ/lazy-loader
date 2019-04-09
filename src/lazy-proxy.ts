@@ -103,31 +103,42 @@ export namespace LazyProxy {
       throw new Error('This should not be called');
     }
 
+    @LazyProperty
+    protected static get dummySealedDescriptors() {
+      const result: PropertyDescriptorMap = Object.create(null);
+      for(const key of Reflect.ownKeys(this.dummy)) {
+        const sealed = Reflect.getOwnPropertyDescriptor(this.dummy, key);
+        if(!sealed || sealed.configurable) continue;
+        delete sealed.get;
+        delete sealed.set;
+        delete sealed.value;
+        result[key as string] = sealed;
+      }
+      return result;
+    }
+
+    @LazyProperty
+    protected static get dummySealedKeys() {
+      return Reflect.ownKeys(this.dummySealedDescriptors);
+    }
+
     public get dummy() {
       return ConstructorLazyHandler.dummy;
     }
 
     public getOwnPropertyDescriptor(target: T, key: PropertyKey) {
-      const result = super.getOwnPropertyDescriptor(target, key);
-      if(result) return result;
-      // Rule breaking resolver: If dummy property is exists but non-configurable,
-      // remove original property's value, getter and setter then return.
-      const sealed = getDescriptorIfSealed(target, key);
-      if(sealed) {
-        delete sealed.value;
-        delete sealed.get;
-        delete sealed.set;
-      }
-      return sealed;
+      return super.getOwnPropertyDescriptor(target, key) ||
+        // Rule breaking resolver: If dummy property is exists but non-configurable,
+        // remove original property's value, getter and setter then return.
+        ConstructorLazyHandler.dummySealedDescriptors[key as string];
     }
 
     public ownKeys(target: T) {
       const keys = super.ownKeys(target);
       const keySet = new Set(keys);
       // Rule breaking resolver: Union all dummy properties which non-configurable
-      for(const key of Reflect.ownKeys(target))
-        if(getDescriptorIfSealed(target, key) && !keySet.has(key))
-          keys.push(key);
+      for(const key of ConstructorLazyHandler.dummySealedKeys)
+        if(!keySet.has(key)) keys.push(key);
       return keys;
     }
 
@@ -136,11 +147,6 @@ export namespace LazyProxy {
         this.source as Function, FPResolver.resolveAll(args), newTarget,
       );
     }
-  }
-
-  function getDescriptorIfSealed(target: object, key: PropertyKey) {
-    const descriptor = Reflect.getOwnPropertyDescriptor(target, key);
-    return descriptor && !descriptor.configurable ? descriptor : undefined;
   }
 
   /**
