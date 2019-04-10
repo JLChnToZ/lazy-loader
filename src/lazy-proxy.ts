@@ -103,42 +103,78 @@ export namespace LazyProxy {
       throw new Error('This should not be called');
     }
 
-    @LazyProperty
-    protected static get dummySealedDescriptors() {
-      const result: PropertyDescriptorMap = Object.create(null);
-      for(const key of Reflect.ownKeys(this.dummy)) {
-        const sealed = Reflect.getOwnPropertyDescriptor(this.dummy, key);
-        if(!sealed || sealed.configurable) continue;
-        delete sealed.get;
-        delete sealed.set;
-        delete sealed.value;
-        result[key as string] = sealed;
-      }
-      return result;
-    }
-
-    @LazyProperty
-    protected static get dummySealedKeys() {
-      return Reflect.ownKeys(this.dummySealedDescriptors);
-    }
-
     public get dummy() {
       return ConstructorLazyHandler.dummy;
     }
 
+    public has(target: T, key: PropertyKey) {
+      const hasKey = super.has(target, key);
+      // Rule breaking resolver: Sealed property in dummy cannot marked non-exists.
+      if(!hasKey) {
+        const original = Reflect.getOwnPropertyDescriptor(target, key);
+        if(original && !original.configurable) return true;
+      }
+      return hasKey;
+    }
+
+    public get(target: T, key: PropertyKey, receiver: any) {
+      // Rule breaking resolver: The value of property must be the same as the dummy
+      // if that is sealed and read only.
+      const original = Reflect.getOwnPropertyDescriptor(target, key);
+      if(original && !original.configurable && !original.get) 
+        return original.value;
+      return super.get(target, key, receiver);
+    }
+
+    public set(target: T, key: PropertyKey, value: any, receiver: any) {
+      // Rule breaking resolver: Assigning value to property which
+      // has same key but read only sealed in dummy is forbidden.
+      const original = Reflect.getOwnPropertyDescriptor(target, key);
+      if(original && !original.configurable &&
+        !original.writable && !original.set) 
+        return false;
+      return super.set(target, key, value, receiver);
+    }
+
+    public deleteProperty(target: T, key: PropertyKey) {
+      // Rule breaking resolver: Deleting a property which
+      // has same key but sealed in dummy is forbidden.
+      const original = Reflect.getOwnPropertyDescriptor(target, key);
+      if(original && !original.configurable) return false;
+      return super.deleteProperty(target, key);
+    }
+
     public getOwnPropertyDescriptor(target: T, key: PropertyKey) {
-      return super.getOwnPropertyDescriptor(target, key) ||
-        // Rule breaking resolver: If dummy property is exists but non-configurable,
-        // remove original property's value, getter and setter then return.
-        ConstructorLazyHandler.dummySealedDescriptors[key as string];
+      const attr = super.getOwnPropertyDescriptor(target, key);
+      // Rule breaking resolver: If dummy property is exists but non-configurable,
+      // replace all getter/setter/value to reflected ones or dummy if undefined and return.
+      const original = Reflect.getOwnPropertyDescriptor(target, key);
+      if(!original || original.configurable) return attr;
+      if(!!original.get)
+        original.get = attr && attr.get || (() => {});
+      if(!!original.set)
+        original.set = attr && attr.set || (() => {});
+      else if(!original.get)
+        original.value = attr && attr.value;
+      return original;
+    }
+
+    public defineProperty(target: T, key: PropertyKey, attributes: PropertyDescriptor) {
+      // Rule breaking resolver: Redefining a property which
+      // has same key but sealed in dummy is forbidden.
+      const original = Reflect.getOwnPropertyDescriptor(target, key);
+      if(original && !original.configurable) return false;
+      return super.defineProperty(target, key, attributes);
     }
 
     public ownKeys(target: T) {
       const keys = super.ownKeys(target);
       const keySet = new Set(keys);
       // Rule breaking resolver: Union all dummy properties which non-configurable
-      for(const key of ConstructorLazyHandler.dummySealedKeys)
-        if(!keySet.has(key)) keys.push(key);
+      for(const key of Reflect.ownKeys(target)) {
+        const original = Reflect.getOwnPropertyDescriptor(target, key);
+        if(original && !original.configurable && !keySet.has(key)) keys.push(key);
+      }
       return keys;
     }
 
