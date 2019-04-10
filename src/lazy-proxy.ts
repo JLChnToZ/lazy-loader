@@ -113,14 +113,6 @@ export namespace LazyProxy {
         !!getDescriptorIfSealed(target, key);
     }
 
-    public get(target: T, key: PropertyKey, receiver: any) {
-      // Rule breaking resolver: The value of property must be the same as the dummy
-      // if that is sealed and read only.
-      const original = getDescriptorIfSealed(target, key);
-      return original && !original.get ? original.value :
-        super.get(target, key, receiver);
-    }
-
     public set(target: T, key: PropertyKey, value: any, receiver: any) {
       // Rule breaking resolver: Assigning value to property which
       // has same key but read only sealed in dummy is forbidden.
