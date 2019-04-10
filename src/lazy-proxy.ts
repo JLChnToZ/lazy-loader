@@ -108,20 +108,16 @@ export namespace LazyProxy {
     }
 
     public has(target: T, key: PropertyKey) {
-      const hasKey = super.has(target, key);
       // Rule breaking resolver: Sealed property in dummy cannot marked non-exists.
-      if(!hasKey) {
-        const original = Reflect.getOwnPropertyDescriptor(target, key);
-        if(original && !original.configurable) return true;
-      }
-      return hasKey;
+      return super.has(target, key) ||
+        !!getDescriptorIfSealed(target, key);
     }
 
     public get(target: T, key: PropertyKey, receiver: any) {
       // Rule breaking resolver: The value of property must be the same as the dummy
       // if that is sealed and read only.
-      const original = Reflect.getOwnPropertyDescriptor(target, key);
-      if(original && !original.configurable && !original.get) 
+      const original = getDescriptorIfSealed(target, key);
+      if(original && !original.get)
         return original.value;
       return super.get(target, key, receiver);
     }
@@ -129,9 +125,8 @@ export namespace LazyProxy {
     public set(target: T, key: PropertyKey, value: any, receiver: any) {
       // Rule breaking resolver: Assigning value to property which
       // has same key but read only sealed in dummy is forbidden.
-      const original = Reflect.getOwnPropertyDescriptor(target, key);
-      if(original && !original.configurable &&
-        !original.writable && !original.set) 
+      const original = getDescriptorIfSealed(target, key);
+      if(original && !original.writable && !original.set)
         return false;
       return super.set(target, key, value, receiver);
     }
@@ -139,17 +134,16 @@ export namespace LazyProxy {
     public deleteProperty(target: T, key: PropertyKey) {
       // Rule breaking resolver: Deleting a property which
       // has same key but sealed in dummy is forbidden.
-      const original = Reflect.getOwnPropertyDescriptor(target, key);
-      if(original && !original.configurable) return false;
-      return super.deleteProperty(target, key);
+      return !getDescriptorIfSealed(target, key) &&
+        super.deleteProperty(target, key);
     }
 
     public getOwnPropertyDescriptor(target: T, key: PropertyKey) {
       const attr = super.getOwnPropertyDescriptor(target, key);
       // Rule breaking resolver: If dummy property is exists but non-configurable,
       // replace all getter/setter/value to reflected ones or dummy if undefined and return.
-      const original = Reflect.getOwnPropertyDescriptor(target, key);
-      if(!original || original.configurable) return attr;
+      const original = getDescriptorIfSealed(target, key);
+      if(!original) return attr;
       if(!!original.get)
         original.get = attr && attr.get || (() => {});
       if(!!original.set)
@@ -162,19 +156,17 @@ export namespace LazyProxy {
     public defineProperty(target: T, key: PropertyKey, attributes: PropertyDescriptor) {
       // Rule breaking resolver: Redefining a property which
       // has same key but sealed in dummy is forbidden.
-      const original = Reflect.getOwnPropertyDescriptor(target, key);
-      if(original && !original.configurable) return false;
-      return super.defineProperty(target, key, attributes);
+      return !getDescriptorIfSealed(target, key) &&
+        super.defineProperty(target, key, attributes);
     }
 
     public ownKeys(target: T) {
       const keys = super.ownKeys(target);
       const keySet = new Set(keys);
       // Rule breaking resolver: Union all dummy properties which non-configurable
-      for(const key of Reflect.ownKeys(target)) {
-        const original = Reflect.getOwnPropertyDescriptor(target, key);
-        if(original && !original.configurable && !keySet.has(key)) keys.push(key);
-      }
+      for(const key of Reflect.ownKeys(target))
+        if(getDescriptorIfSealed(target, key) && !keySet.has(key))
+          keys.push(key);
       return keys;
     }
 
@@ -183,6 +175,11 @@ export namespace LazyProxy {
         this.source as Function, FPResolver.resolveAll(args), newTarget,
       );
     }
+  }
+
+  function getDescriptorIfSealed(target: object, key: PropertyKey) {
+    const original = Reflect.getOwnPropertyDescriptor(target, key);
+    return original && !original.configurable && original || undefined;
   }
 
   /**
