@@ -117,24 +117,22 @@ export namespace LazyProxy {
       // Rule breaking resolver: The value of property must be the same as the dummy
       // if that is sealed and read only.
       const original = getDescriptorIfSealed(target, key);
-      if(original && !original.get)
-        return original.value;
-      return super.get(target, key, receiver);
+      return original && !original.get ? original.value :
+        super.get(target, key, receiver);
     }
 
     public set(target: T, key: PropertyKey, value: any, receiver: any) {
       // Rule breaking resolver: Assigning value to property which
       // has same key but read only sealed in dummy is forbidden.
       const original = getDescriptorIfSealed(target, key);
-      if(original && !original.writable && !original.set)
-        return false;
-      return super.set(target, key, value, receiver);
+      return original && !original.writable && !original.set ? false :
+        super.set(target, key, value, receiver);
     }
 
     public deleteProperty(target: T, key: PropertyKey) {
       // Rule breaking resolver: Deleting a property which
       // has same key but sealed in dummy is forbidden.
-      return !getDescriptorIfSealed(target, key) &&
+      return getDescriptorIfSealed(target, key) ? false :
         super.deleteProperty(target, key);
     }
 
@@ -144,9 +142,9 @@ export namespace LazyProxy {
       // replace all getter/setter/value to reflected ones or dummy if undefined and return.
       const original = getDescriptorIfSealed(target, key);
       if(!original) return attr;
-      if(!!original.get)
+      if(original.get)
         original.get = attr && attr.get || (() => {});
-      if(!!original.set)
+      if(original.set)
         original.set = attr && attr.set || (() => {});
       else if(!original.get)
         original.value = attr && attr.value;
@@ -156,7 +154,7 @@ export namespace LazyProxy {
     public defineProperty(target: T, key: PropertyKey, attributes: PropertyDescriptor) {
       // Rule breaking resolver: Redefining a property which
       // has same key but sealed in dummy is forbidden.
-      return !getDescriptorIfSealed(target, key) &&
+      return getDescriptorIfSealed(target, key) ? false :
         super.defineProperty(target, key, attributes);
     }
 
