@@ -1,3 +1,5 @@
+/** Literally combine 2 types. */
+export declare type Combine<T, U> = T extends U ? T : U extends T ? U : T & U;
 /** Lazy initializer proxy factory */
 export declare namespace LazyProxy {
     /**
@@ -18,8 +20,7 @@ export declare namespace LazyProxy {
      * const someValue = somethingExpensive.someValue();
      * ```
      */
-    function create<T extends object>(init: () => T, isConstructor?: boolean): T;
-    function create<T>(init: () => T, isConstructor?: boolean): T & object;
+    function create<T>(init: () => T, isConstructor?: boolean): T;
     /**
      * Get the target source object of a proxy. Will returns itself if not found.
      * If the initializer is not yet resolved, it will resolves immediately.

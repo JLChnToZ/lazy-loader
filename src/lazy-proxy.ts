@@ -2,14 +2,17 @@ import { LazyProperty } from './lazy-property';
 import { FunctionProxyResolver as FPResolver } from './function-proxy-resolver';
 import { isObject, DefaultPropertyDescriptors } from './utils';
 
+/** Literally combine 2 types. */
+export type Combine<T, U> = T extends U ? T : U extends T ? U : T & U;
+
 /** Lazy initializer proxy factory */
 export namespace LazyProxy {
   // If arrow function has been transpiled to full function object,
   // enforce to use the constructor handler in order to correctly follow the rules.
   const forceConstructor = !!(() => {}).prototype;
-  const wrappers = new WeakMap<object, LazyHandler<object>>();
+  const wrappers = new WeakMap<object, LazyHandler<unknown>>();
 
-  class LazyHandler<T extends object> implements ProxyHandler<T> {
+  class LazyHandler<T> implements ProxyHandler<Combine<T, object>> {
     // Rule breaking resolver: Apply trap needs the dummy object be a callable function.
     // Arrow function is safest as it does not have any extra properties.
     protected static readonly dummy: object = () => {
@@ -23,7 +26,7 @@ export namespace LazyProxy {
     }
 
     @LazyProperty
-    public get source(): T {
+    public get source(): Combine<T, object> {
       const result = Object(this.init());
       delete this.init; // Release reference
       return result;
@@ -33,27 +36,27 @@ export namespace LazyProxy {
       this.init = init;
     }
 
-    public has(_: T, key: PropertyKey) {
+    public has(_: Combine<T, object>, key: PropertyKey) {
       return Reflect.has(this.source, key);
     }
 
-    public get(_: T, key: PropertyKey, receiver: any) {
+    public get(_: Combine<T, object>, key: PropertyKey, receiver: any) {
       return FPResolver.wrap(Reflect.get(this.source, key, receiver));
     }
 
-    public set(_: T, key: PropertyKey, value: any, receiver: any) {
+    public set(_: Combine<T, object>, key: PropertyKey, value: any, receiver: any) {
       return Reflect.set(this.source, key, FPResolver.unwrap(value), receiver);
     }
 
-    public deleteProperty(_: T, key: PropertyKey) {
+    public deleteProperty(_: Combine<T, object>, key: PropertyKey) {
       return Reflect.deleteProperty(this.source, key);
     }
 
-    public ownKeys(_: T) {
+    public ownKeys(_: Combine<T, object>) {
       return Reflect.ownKeys(this.source);
     }
 
-    public getOwnPropertyDescriptor(_: T, key: PropertyKey) {
+    public getOwnPropertyDescriptor(_: Combine<T, object>, key: PropertyKey) {
       const attributes = Reflect.getOwnPropertyDescriptor(this.source, key);
       // Rule breaking resolver: Let all properties looks like configurable.
       if(attributes)
@@ -66,7 +69,7 @@ export namespace LazyProxy {
           undefined);
     }
 
-    public defineProperty(_: T, key: PropertyKey, attributes: PropertyDescriptor) {
+    public defineProperty(_: Combine<T, object>, key: PropertyKey, attributes: PropertyDescriptor) {
       // Rule breaking resolver: Don't allow to seal any properties.
       if(!attributes.configurable)
         return false;
@@ -75,20 +78,20 @@ export namespace LazyProxy {
       return Reflect.defineProperty(this.source, key, attributes);
     }
 
-    public getPrototypeOf(_: T) {
+    public getPrototypeOf(_: Combine<T, object>) {
       return Reflect.getPrototypeOf(this.source);
     }
 
-    public setPrototypeOf(_: T, proto: any) {
+    public setPrototypeOf(_: Combine<T, object>, proto: any) {
       return Reflect.setPrototypeOf(this.source, FPResolver.resolve(proto));
     }
 
-    public preventExtensions(_: T) {
+    public preventExtensions(_: Combine<T, object>) {
       // Rule breaking resolver: Don't allow to seal the proxified object.
       return false;
     }
 
-    public apply(_: T, thisArg: any, args: ArrayLike<any>) {
+    public apply(_: Combine<T, object>, thisArg: any, args: ArrayLike<any>) {
       return Reflect.apply(
         this.source as Function, FPResolver.resolve(thisArg), FPResolver.resolveAll(args),
       );
@@ -96,7 +99,7 @@ export namespace LazyProxy {
   }
 
   /** Alternative handler with constructor function support */
-  class ConstructorLazyHandler<T extends object> extends LazyHandler<T> {
+  class ConstructorLazyHandler<T> extends LazyHandler<T> {
     // Rule breaking resolver: We need a fully crafted function as dummy object
     // to use with construct traps.
     protected static readonly dummy: object = function() {
@@ -107,13 +110,13 @@ export namespace LazyProxy {
       return ConstructorLazyHandler.dummy;
     }
 
-    public has(target: T, key: PropertyKey) {
+    public has(target: Combine<T, object>, key: PropertyKey) {
       // Rule breaking resolver: Sealed property in dummy cannot marked non-exists.
       return super.has(target, key) ||
         !!getDescriptorIfSealed(target, key);
     }
 
-    public set(target: T, key: PropertyKey, value: any, receiver: any) {
+    public set(target: Combine<T, object>, key: PropertyKey, value: any, receiver: any) {
       // Rule breaking resolver: Assigning value to property which
       // has same key but read only sealed in dummy is forbidden.
       const original = getDescriptorIfSealed(target, key);
@@ -121,14 +124,14 @@ export namespace LazyProxy {
         super.set(target, key, value, receiver);
     }
 
-    public deleteProperty(target: T, key: PropertyKey) {
+    public deleteProperty(target: Combine<T, object>, key: PropertyKey) {
       // Rule breaking resolver: Deleting a property which
       // has same key but sealed in dummy is forbidden.
       return getDescriptorIfSealed(target, key) ? false :
         super.deleteProperty(target, key);
     }
 
-    public getOwnPropertyDescriptor(target: T, key: PropertyKey) {
+    public getOwnPropertyDescriptor(target: Combine<T, object>, key: PropertyKey) {
       const attr = super.getOwnPropertyDescriptor(target, key);
       // Rule breaking resolver: If dummy property is exists but non-configurable,
       // replace all getter/setter/value to reflected ones or dummy if undefined and return.
@@ -143,14 +146,14 @@ export namespace LazyProxy {
       return original;
     }
 
-    public defineProperty(target: T, key: PropertyKey, attributes: PropertyDescriptor) {
+    public defineProperty(target: Combine<T, object>, key: PropertyKey, attributes: PropertyDescriptor) {
       // Rule breaking resolver: Redefining a property which
       // has same key but sealed in dummy is forbidden.
       return getDescriptorIfSealed(target, key) ? false :
         super.defineProperty(target, key, attributes);
     }
 
-    public ownKeys(target: T) {
+    public ownKeys(target: Combine<T, object>) {
       const keys = super.ownKeys(target);
       const keySet = new Set(keys);
       // Rule breaking resolver: Union all dummy properties which non-configurable
@@ -160,7 +163,7 @@ export namespace LazyProxy {
       return keys;
     }
 
-    public construct(_: T, args: ArrayLike<any>, newTarget: any) {
+    public construct(_: Combine<T, object>, args: ArrayLike<any>, newTarget: any) {
       return Reflect.construct(
         this.source as Function, FPResolver.resolveAll(args), newTarget,
       );
@@ -190,13 +193,15 @@ export namespace LazyProxy {
    * const someValue = somethingExpensive.someValue();
    * ```
    */
-  export function create<T extends object>(init: () => T, isConstructor?: boolean): T;
-  export function create<T>(init: () => T, isConstructor?: boolean): T & object;
-  export function create(init: () => object, isConstructor?: boolean) {
-    const handler: LazyHandler<object> = (isConstructor || forceConstructor) ?
+  export function create<T>(init: () => T, isConstructor?: boolean) {
+    if(!('Proxy' in global)) {
+      console.warn('Your platform does not support proxy.');
+      return init();
+    }
+    const handler: LazyHandler<T> = (isConstructor || forceConstructor) ?
       new ConstructorLazyHandler(init) :
       new LazyHandler(init);
-    const wrapper = new Proxy(handler.dummy, handler);
+    const wrapper = new Proxy(handler.dummy as Combine<T, object>, handler);
     wrappers.set(wrapper, handler);
     return wrapper;
   }
@@ -210,7 +215,7 @@ export namespace LazyProxy {
     if(isObject(maybeProxy)) {
       const handler = wrappers.get(maybeProxy);
       if(handler)
-        return handler.source as T & object;
+        return handler.source as Combine<T, object>;
     }
     return maybeProxy;
   }
