@@ -1,7 +1,6 @@
-<p align="left"><img src="logo/logo.png" alt="lazy-loader" height="120px"></p>
-
 Lazy Initializer
 ===========
+![logo](media/logo/logo.png)
 [![GitHub issues](https://img.shields.io/github/issues/JLChnToZ/lazy-loader.svg)](https://github.com/JLChnToZ/lazy-loader/issues)
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/JLChnToZ/lazy-loader/blob/master/LICENSE)
 [![Node version](https://img.shields.io/node/v/lazy-initializer.svg)](https://github.com/JLChnToZ/lazy-loader/blob/master/package.json)

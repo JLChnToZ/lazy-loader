@@ -55,6 +55,8 @@
     "mode": "file",
     "excludePrivate": true,
     "excludeNotExported": true,
+    "ignoreCompilerErrors": true,
+    "media": "media",
     "out": "docs"
   },
   "include": [
