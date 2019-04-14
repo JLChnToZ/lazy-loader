@@ -1,3 +1,5 @@
+<p align="left"><img src="logo/logo.png" alt="lazy-loader" height="120px"></p>
+
 Lazy Initializer
 ===========
 [![GitHub issues](https://img.shields.io/github/issues/JLChnToZ/lazy-loader.svg)](https://github.com/JLChnToZ/lazy-loader/issues)
